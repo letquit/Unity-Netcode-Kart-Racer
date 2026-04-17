@@ -21,10 +21,25 @@ namespace Kart
             }
             inputActions.Enable();
         }
+        
+        private void OnDisable()
+        {
+            if (inputActions == null) return;
+
+            inputActions.Disable();
+        }
+
+        private void OnDestroy()
+        {
+            if (inputActions == null) return;
+            
+            inputActions.Dispose();
+            inputActions = null;
+        }
 
         public void Enable()
         {
-            inputActions.Enable();
+            inputActions?.Enable();
         }
 
         public void OnMove(InputAction.CallbackContext context)
