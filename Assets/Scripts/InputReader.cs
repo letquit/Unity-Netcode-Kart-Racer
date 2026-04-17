@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace Kart
 {
     [CreateAssetMenu(fileName = "InputReader", menuName = "Kart/Input Reader")]
-    public class InputReader : ScriptableObject, PlayerInputActions.IPlayerActions
+    public class InputReader : ScriptableObject, PlayerInputActions.IPlayerActions, IDrive
     {
         public Vector2 Move => inputActions.Player.Move.ReadValue<Vector2>();
         public bool IsBraking => inputActions.Player.Brake.ReadValue<float>() > 0;

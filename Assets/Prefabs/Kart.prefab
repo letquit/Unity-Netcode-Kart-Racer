@@ -107,6 +107,37 @@ Transform:
   - {fileID: 594430148776901439}
   m_Father: {fileID: 6577063358894188067}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6178921742907172381
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 403046845429233730}
+  m_Layer: 0
+  m_Name: CenterOfMass
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &403046845429233730
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6178921742907172381}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6577063358894188067}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6273020022266023650
 GameObject:
   m_ObjectHideFlags: 0
@@ -188,9 +219,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6577063358894188067}
-  - component: {fileID: 5253554789891435085}
   - component: {fileID: -3375216324997285956}
+  - component: {fileID: 5253554789891435085}
   - component: {fileID: 4906994557676108418}
+  - component: {fileID: 7647786151187447069}
   m_Layer: 0
   m_Name: Kart
   m_TagString: Untagged
@@ -215,8 +247,67 @@ Transform:
   - {fileID: 1772638652916514968}
   - {fileID: 292363504330212108}
   - {fileID: 5651354003017426742}
+  - {fileID: 403046845429233730}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-3375216324997285956
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7247159231389845352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49703ee12d254738b992a0bd94d6b5fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Kart.KartController
+  axleInfos:
+  - leftWheel: {fileID: 6040053344937161538}
+    rightWheel: {fileID: 5980576873411395287}
+    motor: 0
+    steering: 1
+  - leftWheel: {fileID: 2390853194311083804}
+    rightWheel: {fileID: 8722484360063835701}
+    motor: 1
+    steering: 0
+  maxMotorTorque: 3000
+  maxSpeed: 100
+  maxSteeringAngle: 30
+  turnCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.76
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.3
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  turnStrength: 1500
+  driftSteerMultiplier: 1.5
+  brakeTorque: 10000
+  centerOfMass: {fileID: 403046845429233730}
+  downForce: 100
+  gravity: -9.81
+  laterGScale: 10
+  maxBankAngle: 5
+  bankSpeed: 2
+  IsGrounded: 1
 --- !u!54 &5253554789891435085
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -244,32 +335,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &-3375216324997285956
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7247159231389845352}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 49703ee12d254738b992a0bd94d6b5fd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Kart.KartController
-  axleInfos:
-  - leftWheel: {fileID: 6040053344937161538}
-    rightWheel: {fileID: 5980576873411395287}
-    motor: 0
-    steering: 1
-  - leftWheel: {fileID: 2390853194311083804}
-    rightWheel: {fileID: 8722484360063835701}
-    motor: 1
-    steering: 0
-  maxMotorTorque: 3000
-  maxSpeed: 100
-  maxSteeringAngle: 30
-  brakeTorque: 10000
-  input: {fileID: 11400000, guid: 7c41283bd4681cd4980f08603bf048df, type: 2}
 --- !u!65 &4906994557676108418
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -291,6 +356,20 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 7, y: 3, z: 14}
   m_Center: {x: 0, y: 1.8, z: 0}
+--- !u!114 &7647786151187447069
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7247159231389845352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68b3d665888b91746aba0f205e657627, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Kart.SkidMarkHandler
+  slipThreshold: 0.4
+  skidMarkPrefab: {fileID: 3034559999754878407, guid: aae8a14600f73fc4599692116616fca5, type: 3}
 --- !u!1 &7443439643532585161
 GameObject:
   m_ObjectHideFlags: 0
@@ -513,7 +592,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_VersionIndex
-      value: 25
+      value: 46
       objectReference: {fileID: 0}
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
@@ -1291,7 +1370,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_VersionIndex
-      value: 25
+      value: 46
       objectReference: {fileID: 0}
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
@@ -2253,7 +2332,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_VersionIndex
-      value: 22
+      value: 43
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
@@ -3031,7 +3110,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_VersionIndex
-      value: 22
+      value: 43
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_Tangents.Array.data[125].x

@@ -44,9 +44,13 @@ namespace Kart
         [Header("Banking")]
         [SerializeField] private float maxBankAngle = 5f;
         [SerializeField] private float bankSpeed = 5f;
-        
+
         [Header("Refs")]
-        [SerializeField] private InputReader input;
+        [SerializeField] private InputReader playerInput;
+        [SerializeField] private Circuit circuit;
+        [SerializeField] private AIDriverData driverData;
+        
+        private IDrive input;
         private Rigidbody rb;
 
         private Vector3 kartVelocity;
@@ -62,7 +66,20 @@ namespace Kart
         public bool IsGrounded = true;
         public Vector3 Velocity => kartVelocity;
         public float MaxSpeed => maxSpeed;
-        
+
+        private void Awake()
+        {
+            if (playerInput is IDrive driveInput)
+            {
+                input = driveInput;
+            }
+        }
+
+        public void SetInput(IDrive input)
+        {
+            this.input = input;
+        }
+
         private void Start()
         {
             rb = GetComponent<Rigidbody>();
