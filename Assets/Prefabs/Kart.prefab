@@ -219,6 +219,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6577063358894188067}
+  - component: {fileID: 3689220669025325679}
   - component: {fileID: -3375216324997285956}
   - component: {fileID: 5253554789891435085}
   - component: {fileID: 4906994557676108418}
@@ -250,6 +251,31 @@ Transform:
   - {fileID: 403046845429233730}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3689220669025325679
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7247159231389845352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 790817603
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &-3375216324997285956
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -262,6 +288,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 49703ee12d254738b992a0bd94d6b5fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Kart.KartController
+  ShowTopMostFoldoutHeaderGroup: 1
   axleInfos:
   - leftWheel: {fileID: 6040053344937161538}
     rightWheel: {fileID: 5980576873411395287}
@@ -304,10 +331,18 @@ MonoBehaviour:
   centerOfMass: {fileID: 403046845429233730}
   downForce: 100
   gravity: -9.81
-  laterGScale: 10
+  lateralGScale: 10
   maxBankAngle: 5
   bankSpeed: 2
+  playerInput: {fileID: 0}
+  circuit: {fileID: 0}
+  driverData: {fileID: 0}
+  playerCamera: {fileID: 0}
+  playerAudioListener: {fileID: 0}
   IsGrounded: 1
+  reconciliationThreshold: 10
+  serverCube: {fileID: 0}
+  clientCube: {fileID: 0}
 --- !u!54 &5253554789891435085
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -592,7 +627,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_VersionIndex
-      value: 46
+      value: 52
       objectReference: {fileID: 0}
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
@@ -1370,7 +1405,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_VersionIndex
-      value: 46
+      value: 52
       objectReference: {fileID: 0}
     - target: {fileID: 436456707068937147, guid: e215d55a797f59448b95944680cf5c79, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
@@ -2332,7 +2367,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_VersionIndex
-      value: 43
+      value: 49
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
@@ -3110,7 +3145,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_VersionIndex
-      value: 43
+      value: 49
       objectReference: {fileID: 0}
     - target: {fileID: 6844375539726563480, guid: e72c9e179e2e9e6439f72a0b3a14ab0f, type: 3}
       propertyPath: m_Tangents.Array.data[125].x
