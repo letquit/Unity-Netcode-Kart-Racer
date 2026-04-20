@@ -3,16 +3,20 @@ using UnityEngine;
 
 namespace Kart
 {
-    public enum LegacyAuthorityMode
+    public enum AuthorityMode
     {
         Server,
         Client
     }
 
     [DisallowMultipleComponent]
-    public class NetworkTransformAuthorityBridge : MonoBehaviour
+    public class ClientNetworkTransform : MonoBehaviour
     {
-        public LegacyAuthorityMode authorityMode = LegacyAuthorityMode.Client;
+        public AuthorityMode authorityMode = AuthorityMode.Client;
+
+        public bool SyncPositionX = true;
+        public bool SyncPositionY = true;
+        public bool SyncPositionZ = true;
 
         [SerializeField] private NetworkTransform target;
 
@@ -30,12 +34,17 @@ namespace Kart
 
         private void Awake() => Apply();
 
-        private void Apply()
+        public void Apply()
         {
             if (!target) return;
-            target.AuthorityMode = authorityMode == LegacyAuthorityMode.Server
+
+            target.AuthorityMode = authorityMode == AuthorityMode.Server
                 ? NetworkTransform.AuthorityModes.Server
                 : NetworkTransform.AuthorityModes.Owner;
+
+            target.SyncPositionX = SyncPositionX;
+            target.SyncPositionY = SyncPositionY;
+            target.SyncPositionZ = SyncPositionZ;
         }
     }
 }

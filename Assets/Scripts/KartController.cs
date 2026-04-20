@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Cinemachine;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using Utilities;
@@ -22,18 +24,25 @@ namespace Kart
     public struct InputPayload : INetworkSerializable
     {
         public int tick;
+        public DateTime timestamp;
+        public ulong networkObjectId;
         public Vector3 inputVector;
+        public Vector3 position;
 
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref tick);
+            serializer.SerializeValue(ref timestamp);
+            serializer.SerializeValue(ref networkObjectId);
             serializer.SerializeValue(ref inputVector);
+            serializer.SerializeValue(ref position);
         }
     }
 
     public struct StatePayload : INetworkSerializable
     {
         public int tick;
+        public ulong networkObjectId;
         public Vector3 position;
         public Quaternion rotation;
         public Vector3 velocity;
@@ -42,6 +51,7 @@ namespace Kart
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref tick);
+            serializer.SerializeValue(ref networkObjectId);
             serializer.SerializeValue(ref position);
             serializer.SerializeValue(ref rotation);
             serializer.SerializeValue(ref velocity);
@@ -86,6 +96,7 @@ namespace Kart
 
         private IDrive input;
         private Rigidbody rb;
+        private ClientNetworkTransform clientNetworkTransform;
 
         private Vector3 kartVelocity;
         private float brakeVelocity;
@@ -102,7 +113,7 @@ namespace Kart
         public float MaxSpeed => maxSpeed;
 
         // Netcode general
-        private NetworkTimer timer;
+        private NetworkTimer networkTimer;
         private const float k_serverTickRate = 60f; // 60 FPS
         private const int k_bufferSize = 1024;
 
@@ -116,10 +127,24 @@ namespace Kart
         private CircularBuffer<StatePayload> serverStateBuffer;
         private Queue<InputPayload> serverInputQueue;
 
-        [Header("Netcode")] 
+        [Header("Netcode")]
+        [SerializeField] private float reconciliationCooldownTime = 1f;
         [SerializeField] private float reconciliationThreshold = 10f;
+        [SerializeField] private float extrapolationLimit = 0.5f;   // 500 milliseconds
+        [SerializeField] private float extrapolationMultiplier = 1.2f;
         [SerializeField] private GameObject serverCube;
         [SerializeField] private GameObject clientCube;
+
+        private StatePayload extrapolationState;
+        private CountdownTimer extrapolationTimer;
+
+        private CountdownTimer reconciliationTimer;
+
+        [Header("Netcode Debug")]
+        [SerializeField] private TextMeshPro networkText;
+        [SerializeField] private TextMeshPro playerText;
+        [SerializeField] private TextMeshPro serverRpcText;
+        [SerializeField] private TextMeshPro clientRpcText;
 
         private void Awake()
         {
@@ -129,6 +154,7 @@ namespace Kart
             }
 
             rb = GetComponent<Rigidbody>();
+            clientNetworkTransform = GetComponent<ClientNetworkTransform>();
             input.Enable();
 
             rb.centerOfMass = centerOfMass.localPosition;
@@ -140,12 +166,37 @@ namespace Kart
                 axleInfo.originalSidewaysFriction = axleInfo.leftWheel.sidewaysFriction;
             }
 
-            timer = new NetworkTimer(k_serverTickRate);
+            networkTimer = new NetworkTimer(k_serverTickRate);
             clientStateBuffer = new CircularBuffer<StatePayload>(k_bufferSize);
             clientInputBuffer = new CircularBuffer<InputPayload>(k_bufferSize);
 
             serverStateBuffer = new CircularBuffer<StatePayload>(k_bufferSize);
             serverInputQueue = new Queue<InputPayload>();
+            
+            reconciliationTimer = new CountdownTimer(reconciliationCooldownTime);
+            extrapolationTimer = new CountdownTimer(extrapolationLimit);
+
+            reconciliationTimer.OnTimerStart += () =>
+            {
+                extrapolationTimer.Stop();
+            };
+            
+            extrapolationTimer.OnTimerStart += () =>
+            {
+                reconciliationTimer.Stop();
+                clientNetworkTransform.authorityMode = AuthorityMode.Server;
+                clientNetworkTransform.SyncPositionX = false;
+                clientNetworkTransform.SyncPositionY = false;
+                clientNetworkTransform.SyncPositionZ = false;
+            };
+            extrapolationTimer.OnTimerStop += () =>
+            {
+                extrapolationState = default;
+                clientNetworkTransform.authorityMode = AuthorityMode.Client;
+                clientNetworkTransform.SyncPositionX = true;
+                clientNetworkTransform.SyncPositionY = true;
+                clientNetworkTransform.SyncPositionZ = true;
+            };
         }
 
         public void SetInput(IDrive input)
@@ -164,84 +215,109 @@ namespace Kart
 
             playerCamera.Priority = 100;
             playerAudioListener.enabled = true;
+            
+            networkText.SetText($"Player {NetworkManager.LocalClientId} Host: {NetworkManager.IsHost} Server: {IsServer} Client: {IsClient}");
+            if (!IsServer) serverRpcText.SetText("Not Server");
+            if (!IsClient) clientRpcText.SetText("Not Client");
         }
 
         private void Update()
         {
-            timer.Update(Time.deltaTime);
+            networkTimer.Update(Time.deltaTime);
+            reconciliationTimer.Tick(Time.deltaTime);
+            extrapolationTimer.Tick(Time.deltaTime);
+            
+            playerText.SetText($"Owner: {IsOwner} NetworkObjectId: {NetworkObjectId} Velocity: {kartVelocity.magnitude:F1}");
+            
             if (Input.GetKeyDown(KeyCode.Q))
             {
                 transform.position += transform.forward * 20f;
             }
+            
+            // Run on Update or FixedUpdate, or both - depends on the game, consider exposing an option to the editor
+            Extrapolate();
         }
 
         private void FixedUpdate()
         {
-            if (!IsOwner) return;
-
-            while (timer.ShouldTick())
+            while (networkTimer.ShouldTick())
             {
                 HandleClientTick();
                 HandleServerTick();
             }
+            Extrapolate();
         }
 
         private void HandleServerTick()
         {
+            if (!IsServer) return;
+            
             var bufferIndex = -1;
+            InputPayload inputPayload = default;
             while (serverInputQueue.Count > 0)
             {
-                InputPayload inputPayload = serverInputQueue.Dequeue();
+                inputPayload = serverInputQueue.Dequeue();
 
                 bufferIndex = inputPayload.tick % k_bufferSize;
 
-                var previousBufferIndex = bufferIndex - 1;
-                if (previousBufferIndex < 0) previousBufferIndex = k_bufferSize - 1;
-
-                StatePayload statePayload = SimulateMovement(inputPayload);
+                StatePayload statePayload = ProcessMovement(inputPayload);
                 serverStateBuffer.Add(statePayload, bufferIndex);
             }
 
             if (bufferIndex == -1) return;
             SendToClientRpc(serverStateBuffer.Get(bufferIndex));
+            HandleExtrapolation(serverStateBuffer.Get(bufferIndex), CalculateLatencyInMillis(inputPayload));
         }
 
-        private StatePayload SimulateMovement(InputPayload inputPayload)
+        private void Extrapolate()
         {
-            Physics.simulationMode = SimulationMode.Script;
-
-            Move(inputPayload.inputVector);
-            Physics.Simulate(Time.fixedDeltaTime);
-            Physics.simulationMode = SimulationMode.FixedUpdate;
-
-            return new StatePayload()
+            if (IsServer && extrapolationTimer.IsRunning)
             {
-                tick = inputPayload.tick,
-                position = transform.position,
-                rotation = transform.rotation,
-                velocity = rb.linearVelocity,
-                angularVelocity = rb.angularVelocity
-            };
+                transform.position += extrapolationState.position.With(y: 0);
+            }
+        }
+        
+        private void HandleExtrapolation(StatePayload latest, float latency)
+        {
+            if (ShouldExtrapolate(latency))
+            {
+                float axisLength = latency * latest.angularVelocity.magnitude * Mathf.Rad2Deg;
+                Quaternion angularRotation = Quaternion.AngleAxis(axisLength, latest.angularVelocity);
+                if (extrapolationState.position != default)
+                {
+                    latest = extrapolationState;
+                }
+
+                var posAdjustment = latest.velocity * (1 + latency * extrapolationMultiplier);
+                extrapolationState.position = posAdjustment;
+                extrapolationState.rotation = angularRotation * latest.rotation;
+                extrapolationState.velocity = latest.velocity;
+                extrapolationState.angularVelocity = latest.angularVelocity;
+                extrapolationTimer.Start();
+            }
+            else
+            {
+                extrapolationTimer.Stop();
+                // Reconcile if desired
+            }
         }
 
-        [ClientRpc]
-        private void SendToClientRpc(StatePayload statePayload)
-        {
-            if (!IsOwner) return;
-            lastServerState = statePayload;
-        }
+        private bool ShouldExtrapolate(float latency) => latency < extrapolationLimit && latency > Time.fixedDeltaTime;
 
         private void HandleClientTick()
         {
-            if (!IsClient) return;
+            if (!IsClient || !IsOwner) return;
 
-            var currentTick = timer.CurrentTick;
+            var currentTick = networkTimer.CurrentTick;
             var bufferIndex = currentTick % k_bufferSize;
 
             InputPayload inputPayload = new InputPayload()
             {
                 tick = currentTick,
-                inputVector = input.Move
+                timestamp = DateTime.Now,
+                networkObjectId = NetworkObjectId,
+                inputVector = input.Move,
+                position = transform.position
             };
 
             clientInputBuffer.Add(inputPayload, bufferIndex);
@@ -253,13 +329,37 @@ namespace Kart
             HandleServerReconciliation();
         }
 
+        private static float CalculateLatencyInMillis(InputPayload inputPayload)
+        {
+            return (DateTime.Now - inputPayload.timestamp).Milliseconds / 1000f;
+        }
+
+        [ClientRpc]
+        private void SendToClientRpc(StatePayload statePayload)
+        {
+            clientRpcText.SetText($"Received state from server Tick {statePayload.tick} Server POS: {statePayload.position}");
+            serverCube.transform.position = statePayload.position.With(y: 4);
+            
+            if (!IsOwner) return;
+            lastServerState = statePayload;
+        }
+
+        [ServerRpc]
+        private void SendToServerRpc(InputPayload input)
+        {
+            serverRpcText.SetText($"Received input from client Tick: {input.tick} Client POS: {input.position}");
+            clientCube.transform.position = input.position.With(y: 4);
+            
+            serverInputQueue.Enqueue(input);
+        }
+
         private bool ShouldReconcile()
         {
             bool isNewServerState = !lastServerState.Equals(default);
             bool isLastStateUndefinedOrDifferent = lastProcessedState.Equals(default)
                                                    || !lastProcessedState.Equals(lastServerState);
 
-            return isNewServerState && isLastStateUndefinedOrDifferent;
+            return isNewServerState && isLastStateUndefinedOrDifferent && !reconciliationTimer.IsRunning && !extrapolationTimer.IsRunning;
         }
 
         private void HandleServerReconciliation()
@@ -282,6 +382,7 @@ namespace Kart
             if (positionError > reconciliationThreshold)
             {
                 ReconcileState(rewindState);
+                reconciliationTimer.Start();
             }
 
             lastProcessedState = lastServerState;
@@ -301,19 +402,13 @@ namespace Kart
             // Replay all inputs from the rewind state to the current state
             int tickToReplay = lastServerState.tick;
 
-            while (tickToReplay < timer.CurrentTick)
+            while (tickToReplay < networkTimer.CurrentTick)
             {
                 int bufferIndex = tickToReplay % k_bufferSize;
                 StatePayload statePayload = ProcessMovement(clientInputBuffer.Get(bufferIndex));
                 clientStateBuffer.Add(statePayload, bufferIndex);
                 tickToReplay++;
             }
-        }
-
-        [ServerRpc]
-        private void SendToServerRpc(InputPayload input)
-        {
-            serverInputQueue.Enqueue(input);
         }
 
         private StatePayload ProcessMovement(InputPayload input)
@@ -323,6 +418,7 @@ namespace Kart
             return new StatePayload()
             {
                 tick = input.tick,
+                networkObjectId = input.networkObjectId,
                 position = transform.position,
                 rotation = transform.rotation,
                 velocity = rb.linearVelocity,
@@ -368,9 +464,7 @@ namespace Kart
             {
                 float targetSpeed = verticalInput * maxSpeed;
                 Vector3 forwardWithoutY = transform.forward.With(y: 0).normalized;
-                float latencyFactor = IsHost ? 0.4f : 0.05f;
-                float lerpFraction = timer.MinTimeBetweenTicks / (latencyFactor / Time.deltaTime);
-                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, forwardWithoutY * targetSpeed, lerpFraction);
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, forwardWithoutY * targetSpeed, networkTimer.MinTimeBetweenTicks);
             }
 
             // Downforce - always push the cart down, using lateral Gs to scale the force if the Kart is moving sideways fast
