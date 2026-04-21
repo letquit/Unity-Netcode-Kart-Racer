@@ -9,6 +9,9 @@ using Utilities;
 
 namespace Kart
 {
+    /// <summary>
+    /// 表示车辆轴的信息，包括左右轮、是否为驱动轴和转向轴等属性
+    /// </summary>
     [System.Serializable]
     public class AxleInfo
     {
@@ -20,7 +23,9 @@ namespace Kart
         public WheelFrictionCurve originalSidewaysFriction;
     }
 
-    // Network variables should be value objects
+    /// <summary>
+    /// 网络输入数据包结构，用于序列化客户端输入信息
+    /// </summary>
     public struct InputPayload : INetworkSerializable
     {
         public int tick;
@@ -29,6 +34,11 @@ namespace Kart
         public Vector3 inputVector;
         public Vector3 position;
 
+        /// <summary>
+        /// 序列化网络数据的方法
+        /// </summary>
+        /// <typeparam name="T">缓冲区序列化器类型</typeparam>
+        /// <param name="serializer">用于序列化的缓冲区序列化器</param>
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref tick);
@@ -39,6 +49,9 @@ namespace Kart
         }
     }
 
+    /// <summary>
+    /// 网络状态数据包结构，用于序列化车辆物理状态信息
+    /// </summary>
     public struct StatePayload : INetworkSerializable
     {
         public int tick;
@@ -48,6 +61,11 @@ namespace Kart
         public Vector3 velocity;
         public Vector3 angularVelocity;
 
+        /// <summary>
+        /// 序列化网络数据的方法
+        /// </summary>
+        /// <typeparam name="T">缓冲区序列化器类型</typeparam>
+        /// <param name="serializer">用于序列化的缓冲区序列化器</param>
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref tick);
@@ -59,6 +77,9 @@ namespace Kart
         }
     }
 
+    /// <summary>
+    /// 卡丁车控制器类，处理卡丁车的物理模拟、输入控制和网络同步功能
+    /// </summary>
     public class KartController : NetworkBehaviour
     {
         [Header("Axle Information")] 
@@ -146,6 +167,9 @@ namespace Kart
         [SerializeField] private TextMeshPro serverRpcText;
         [SerializeField] private TextMeshPro clientRpcText;
 
+        /// <summary>
+        /// 初始化卡丁车控制器，在Awake阶段设置输入、物理属性和网络相关组件
+        /// </summary>
         private void Awake()
         {
             if (playerInput is IDrive driveInput)
@@ -199,11 +223,18 @@ namespace Kart
             };
         }
 
+        /// <summary>
+        /// 设置卡丁车的输入接口
+        /// </summary>
+        /// <param name="input">驱动输入接口</param>
         public void SetInput(IDrive input)
         {
             this.input = input;
         }
 
+        /// <summary>
+        /// 当网络对象生成时调用，设置相机优先级和音频监听器
+        /// </summary>
         public override void OnNetworkSpawn()
         {
             if (!IsOwner)
@@ -248,6 +279,9 @@ namespace Kart
             Extrapolate();
         }
 
+        /// <summary>
+        /// 处理服务器端的网络逻辑，处理客户端输入并计算状态
+        /// </summary>
         private void HandleServerTick()
         {
             if (!IsServer) return;
@@ -269,6 +303,9 @@ namespace Kart
             HandleExtrapolation(serverStateBuffer.Get(bufferIndex), CalculateLatencyInMillis(inputPayload));
         }
 
+        /// <summary>
+        /// 根据外推状态更新物体位置
+        /// </summary>
         private void Extrapolate()
         {
             if (IsServer && extrapolationTimer.IsRunning)
@@ -277,6 +314,11 @@ namespace Kart
             }
         }
         
+        /// <summary>
+        /// 处理状态外推逻辑，基于延迟预测未来状态
+        /// </summary>
+        /// <param name="latest">最新的状态数据</param>
+        /// <param name="latency">网络延迟时间</param>
         private void HandleExtrapolation(StatePayload latest, float latency)
         {
             if (ShouldExtrapolate(latency))
@@ -302,8 +344,16 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 判断是否应该进行外推计算
+        /// </summary>
+        /// <param name="latency">网络延迟时间</param>
+        /// <returns>如果延迟在限制范围内且大于固定时间步长则返回true</returns>
         private bool ShouldExtrapolate(float latency) => latency < extrapolationLimit && latency > Time.fixedDeltaTime;
 
+        /// <summary>
+        /// 处理客户端的网络逻辑，收集输入并发送到服务器
+        /// </summary>
         private void HandleClientTick()
         {
             if (!IsClient || !IsOwner) return;
@@ -329,11 +379,20 @@ namespace Kart
             HandleServerReconciliation();
         }
 
+        /// <summary>
+        /// 计算输入数据的网络延迟
+        /// </summary>
+        /// <param name="inputPayload">输入数据包</param>
+        /// <returns>以秒为单位的延迟时间</returns>
         private static float CalculateLatencyInMillis(InputPayload inputPayload)
         {
             return (DateTime.Now - inputPayload.timestamp).Milliseconds / 1000f;
         }
 
+        /// <summary>
+        /// 接收服务器发送的状态数据
+        /// </summary>
+        /// <param name="statePayload">服务器状态数据包</param>
         [ClientRpc]
         private void SendToClientRpc(StatePayload statePayload)
         {
@@ -344,6 +403,10 @@ namespace Kart
             lastServerState = statePayload;
         }
 
+        /// <summary>
+        /// 向服务器发送输入数据
+        /// </summary>
+        /// <param name="input">客户端输入数据包</param>
         [ServerRpc]
         private void SendToServerRpc(InputPayload input)
         {
@@ -353,6 +416,10 @@ namespace Kart
             serverInputQueue.Enqueue(input);
         }
 
+        /// <summary>
+        /// 判断是否需要进行服务器状态协调
+        /// </summary>
+        /// <returns>如果满足协调条件则返回true</returns>
         private bool ShouldReconcile()
         {
             bool isNewServerState = !lastServerState.Equals(default);
@@ -362,6 +429,9 @@ namespace Kart
             return isNewServerState && isLastStateUndefinedOrDifferent && !reconciliationTimer.IsRunning && !extrapolationTimer.IsRunning;
         }
 
+        /// <summary>
+        /// 处理服务器状态协调逻辑，校正客户端与服务器之间的状态差异
+        /// </summary>
         private void HandleServerReconciliation()
         {
             if (!ShouldReconcile()) return;
@@ -388,6 +458,10 @@ namespace Kart
             lastProcessedState = lastServerState;
         }
 
+        /// <summary>
+        /// 执行状态协调，将物体状态调整为服务器状态
+        /// </summary>
+        /// <param name="rewindState">需要回滚到的状态</param>
         private void ReconcileState(StatePayload rewindState)
         {
             transform.position = rewindState.position;
@@ -411,6 +485,11 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 处理移动逻辑并返回当前状态数据
+        /// </summary>
+        /// <param name="input">输入数据包</param>
+        /// <returns>当前状态数据包</returns>
         private StatePayload ProcessMovement(InputPayload input)
         {
             Move(input.inputVector);
@@ -426,6 +505,10 @@ namespace Kart
             };
         }
 
+        /// <summary>
+        /// 处理卡丁车的基本移动逻辑
+        /// </summary>
+        /// <param name="inputVector">输入向量</param>
         private void Move(Vector2 inputVector)
         {
             float verticalInput = AdjustInput(input.Move.y);
@@ -449,6 +532,11 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 处理卡丁车在地面上的移动逻辑
+        /// </summary>
+        /// <param name="verticalInput">垂直输入值</param>
+        /// <param name="horizontalInput">水平输入值</param>
         private void HandleGroundedMovement(float verticalInput, float horizontalInput)
         {
             if (!IsOwner) return;
@@ -485,6 +573,11 @@ namespace Kart
             rb.centerOfMass = originalCenterOfMass + centerOfMassAdjustment;
         }
 
+        /// <summary>
+        /// 处理卡丁车在空中的移动逻辑
+        /// </summary>
+        /// <param name="verticalInput">垂直输入值</param>
+        /// <param name="horizontalInput">水平输入值</param>
         private void HandleAirborneMovement(float verticalInput, float horizontalInput)
         {
             if (!IsOwner) return;
@@ -494,6 +587,10 @@ namespace Kart
                 Time.deltaTime * gravity);
         }
 
+        /// <summary>
+        /// 更新卡丁车的倾斜角度
+        /// </summary>
+        /// <param name="horizontalInput">水平输入值</param>
         private void UpdateBanking(float horizontalInput)
         {
             // Bank the Kart in the opposite direction of the turn
@@ -503,6 +600,11 @@ namespace Kart
             transform.localEulerAngles = currentEuler;
         }
 
+        /// <summary>
+        /// 更新所有轴的控制参数
+        /// </summary>
+        /// <param name="motor">电机扭矩值</param>
+        /// <param name="steering">转向角度值</param>
         private void UpdateAxles(float motor, float steering)
         {
             foreach (AxleInfo axleInfo in axleInfos)
@@ -515,6 +617,10 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 更新轮子的视觉表示
+        /// </summary>
+        /// <param name="collider">轮子碰撞体</param>
         private void UpdateWheelVisuals(WheelCollider collider)
         {
             if (collider.transform.childCount == 0) return;
@@ -529,6 +635,11 @@ namespace Kart
             visualWheel.transform.rotation = rotation;
         }
 
+        /// <summary>
+        /// 处理轴的转向逻辑
+        /// </summary>
+        /// <param name="axleInfo">轴信息</param>
+        /// <param name="steering">转向角度值</param>
         private void HandleSteering(AxleInfo axleInfo, float steering)
         {
             if (axleInfo.steering)
@@ -539,6 +650,11 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 处理轴的电机逻辑
+        /// </summary>
+        /// <param name="axleInfo">轴信息</param>
+        /// <param name="motor">电机扭矩值</param>
         private void HandleMotor(AxleInfo axleInfo, float motor)
         {
             if (axleInfo.motor)
@@ -548,6 +664,10 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 处理刹车和漂移逻辑
+        /// </summary>
+        /// <param name="axleInfo">轴信息</param>
         private void HandleBrakesAndDrift(AxleInfo axleInfo)
         {
             if (!IsOwner) return; 
@@ -578,6 +698,10 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 重置轮子的漂移摩擦力
+        /// </summary>
+        /// <param name="wheel">轮子碰撞体</param>
         private void ResetDriftFriction(WheelCollider wheel)
         {
             AxleInfo axleInfo = axleInfos.FirstOrDefault(axle => axle.leftWheel == wheel || axle.rightWheel == wheel);
@@ -587,6 +711,10 @@ namespace Kart
             wheel.sidewaysFriction = axleInfo.originalSidewaysFriction;
         }
 
+        /// <summary>
+        /// 应用漂移摩擦力到轮子
+        /// </summary>
+        /// <param name="wheel">轮子碰撞体</param>
         private void ApplyDriftFriction(WheelCollider wheel)
         {
             if (wheel.GetGroundHit(out var hit))
@@ -597,6 +725,11 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 更新轮子的摩擦力曲线
+        /// </summary>
+        /// <param name="friction">原始摩擦力曲线</param>
+        /// <returns>更新后的摩擦力曲线</returns>
         private WheelFrictionCurve UpdateFriction(WheelFrictionCurve friction)
         {
             friction.stiffness = input.IsBraking
@@ -605,6 +738,11 @@ namespace Kart
             return friction;
         }
 
+        /// <summary>
+        /// 调整输入值，将较大值映射为1或-1
+        /// </summary>
+        /// <param name="input">原始输入值</param>
+        /// <returns>调整后的输入值</returns>
         private float AdjustInput(float input)
         {
             return input switch

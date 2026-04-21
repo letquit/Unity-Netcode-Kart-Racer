@@ -5,6 +5,9 @@ using UnityEditor;
 
 namespace Kart
 {
+    /// <summary>
+    /// 赛道电路类，用于定义和可视化赛车游戏中的赛道路径、宽度、内线等信息
+    /// </summary>
     public class Circuit : MonoBehaviour
     {
         [Header("Path Points")]
@@ -17,7 +20,7 @@ namespace Kart
 
         [Header("Point / Polyline Style")]
         [SerializeField] private float pointRadius = 0.5f;
-        [SerializeField] private Color pointColor = new Color(1f, 0.9f, 0.1f, 1f);
+        [SerializeField] private Color pointColor = new Color(1f, 0.9f, 0f, 1f);
         [SerializeField] private Color polylineColor = new Color(0.2f, 1f, 1f, 0.85f);
 
         [Header("Curve Preview (Catmull-Rom)")]
@@ -33,7 +36,7 @@ namespace Kart
         [SerializeField] private bool drawBoundaryLines = true;
         [Tooltip("是否画每个点的横截面宽度线")]
         [SerializeField] private bool drawCrossSections = true;
-        [SerializeField] private Color leftBoundaryColor = new Color(1f, 0.35f, 0.35f, 0.95f);
+        [SerializeField] private Color leftBoundaryColor = new Color(1f, 0.35f, 0f, 0.95f);
         [SerializeField] private Color rightBoundaryColor = new Color(0.35f, 0.6f, 1f, 0.95f);
         [SerializeField] private Color crossSectionColor = new Color(1f, 1f, 1f, 0.35f);
 
@@ -47,20 +50,23 @@ namespace Kart
 
         [Header("Suspicious Segment Detection")]
         [SerializeField] private bool drawSuspicious = true;
-        [Tooltip("相邻 waypoint 超过该距离视为“过稀”（橙色）")]
+        [Tooltip("相邻 waypoint 超过该距离视为\"过稀\"（橙色）")]
         [SerializeField] private float maxSegmentLength = 10f;
-        [Tooltip("拐角超过该角度视为“过急”（红色）")]
+        [Tooltip("拐角超过该角度视为\"过急\"（红色）")]
         [SerializeField, Range(5f, 170f)] private float maxCornerAngle = 45f;
         [Tooltip("是否显示每个点处的角度数值")]
         [SerializeField] private bool showCornerAngleLabel = true;
         [SerializeField] private Color longSegmentColor = new Color(1f, 0.55f, 0f, 1f);
-        [SerializeField] private Color sharpCornerColor = new Color(1f, 0.2f, 0.2f, 1f);
+        [SerializeField] private Color sharpCornerColor = new Color(1f, 0.2f, 0f, 1f);
 
         [Header("Labels")]
         [SerializeField] private bool showIndexLabel = true;
         [SerializeField] private bool showWidthLabel = false;
         [SerializeField] private Vector3 labelOffset = new Vector3(0f, 0.8f, 0f);
 
+        /// <summary>
+        /// Unity编辑器回调函数，在场景视图中绘制gizmo图形
+        /// </summary>
         private void OnDrawGizmos()
         {
             if (!drawGizmos || waypoints == null || waypoints.Length == 0) return;
@@ -80,6 +86,9 @@ namespace Kart
             DrawLabels();
         }
 
+        /// <summary>
+        /// 绘制路点球体标记
+        /// </summary>
         private void DrawWaypointSpheres()
         {
             Gizmos.color = pointColor;
@@ -90,6 +99,9 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 绘制折线连接路点
+        /// </summary>
         private void DrawPolyline()
         {
             Gizmos.color = polylineColor;
@@ -105,6 +117,9 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 绘制赛道宽度和内线
+        /// </summary>
         private void DrawTrackWidthAndInnerLine()
         {
             int count = waypoints.Length;
@@ -198,6 +213,13 @@ namespace Kart
 #endif
         }
 
+        /// <summary>
+        /// 尝试获取指定路点的中心位置和右侧方向向量
+        /// </summary>
+        /// <param name="i">路点索引</param>
+        /// <param name="center">输出的中心位置</param>
+        /// <param name="rightDir">输出的右侧方向向量</param>
+        /// <returns>如果成功获取则返回true，否则返回false</returns>
         private bool TryGetCenterAndRight(int i, out Vector3 center, out Vector3 rightDir)
         {
             center = Vector3.zero;
@@ -222,6 +244,11 @@ namespace Kart
             return rightDir.sqrMagnitude > 0.0001f;
         }
 
+        /// <summary>
+        /// 获取指定路点的转弯角度
+        /// </summary>
+        /// <param name="i">路点索引</param>
+        /// <returns>有符号的转弯角度（弧度）</returns>
         private float GetSignedTurnAt(int i)
         {
             if (!TryGetPrevCurrNext(i, out Vector3 prev, out Vector3 curr, out Vector3 next))
@@ -236,6 +263,14 @@ namespace Kart
             return Vector3.SignedAngle(inDir.normalized, outDir.normalized, Vector3.up);
         }
 
+        /// <summary>
+        /// 尝试获取指定路点及其前一个和后一个路点的位置
+        /// </summary>
+        /// <param name="i">当前路点索引</param>
+        /// <param name="prev">输出的前一个路点位置</param>
+        /// <param name="curr">输出的当前路点位置</param>
+        /// <param name="next">输出的后一个路点位置</param>
+        /// <returns>如果成功获取则返回true，否则返回false</returns>
         private bool TryGetPrevCurrNext(int i, out Vector3 prev, out Vector3 curr, out Vector3 next)
         {
             prev = curr = next = Vector3.zero;
@@ -266,6 +301,9 @@ namespace Kart
             return true;
         }
 
+        /// <summary>
+        /// 绘制Catmull-Rom样条曲线
+        /// </summary>
         private void DrawCatmullRomCurve()
         {
             Gizmos.color = curveColor;
@@ -288,6 +326,9 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 绘制可疑路段和角落检测
+        /// </summary>
         private void DrawSuspiciousSegmentsAndCorners()
         {
             int count = waypoints.Length;
@@ -352,6 +393,14 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 尝试获取用于计算角落角度的三个连续点
+        /// </summary>
+        /// <param name="i">中间点的索引</param>
+        /// <param name="prev">输出的前一点位置</param>
+        /// <param name="curr">输出的当前点位置</param>
+        /// <param name="next">输出的后一点位置</param>
+        /// <returns>如果成功获取三个点则返回true，否则返回false</returns>
         private bool TryGetCornerPoints(int i, out Vector3 prev, out Vector3 curr, out Vector3 next)
         {
             prev = curr = next = Vector3.zero;
@@ -379,6 +428,15 @@ namespace Kart
             return true;
         }
 
+        /// <summary>
+        /// 尝试获取Catmull-Rom曲线所需的四个控制点
+        /// </summary>
+        /// <param name="i">当前段的起始索引</param>
+        /// <param name="p0">输出的第0个控制点</param>
+        /// <param name="p1">输出的第1个控制点</param>
+        /// <param name="p2">输出的第2个控制点</param>
+        /// <param name="p3">输出的第3个控制点</param>
+        /// <returns>如果成功获取四个控制点则返回true，否则返回false</returns>
         private bool TryGetCatmullPoints(int i, out Vector3 p0, out Vector3 p1, out Vector3 p2, out Vector3 p3)
         {
             p0 = p1 = p2 = p3 = Vector3.zero;
@@ -413,6 +471,15 @@ namespace Kart
             }
         }
 
+        /// <summary>
+        /// 计算Catmull-Rom样条曲线上的点
+        /// </summary>
+        /// <param name="p0">第0个控制点</param>
+        /// <param name="p1">第1个控制点</param>
+        /// <param name="p2">第2个控制点</param>
+        /// <param name="p3">第3个控制点</param>
+        /// <param name="t">参数t，范围[0,1]</param>
+        /// <returns>在曲线上对应t值的点坐标</returns>
         private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
         {
             float t2 = t * t;
@@ -426,6 +493,9 @@ namespace Kart
             );
         }
 
+        /// <summary>
+        /// 绘制路点索引标签
+        /// </summary>
         private void DrawLabels()
         {
 #if UNITY_EDITOR
