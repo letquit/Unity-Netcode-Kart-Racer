@@ -451,6 +451,9 @@ namespace Kart
 
         private void HandleGroundedMovement(float verticalInput, float horizontalInput)
         {
+            if (!IsOwner) return;
+            // if (rb.isKinematic) return;
+            
             // Turn logic
             if (Mathf.Abs(verticalInput) > 0.1f || Mathf.Abs(kartVelocity.z) > 1)
             {
@@ -484,6 +487,8 @@ namespace Kart
 
         private void HandleAirborneMovement(float verticalInput, float horizontalInput)
         {
+            if (!IsOwner) return;
+            
             // Apply gravity to the Kart while its airborne
             rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, rb.linearVelocity + Vector3.down * gravity,
                 Time.deltaTime * gravity);
@@ -545,6 +550,8 @@ namespace Kart
 
         private void HandleBrakesAndDrift(AxleInfo axleInfo)
         {
+            if (!IsOwner) return; 
+            
             if (axleInfo.motor)
             {
                 if (input.IsBraking)
